@@ -19,14 +19,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Normalize to flat shape
-  const result = (data || []).map((row) => ({
-    date: row.date,
-    meal_time: row.meal_time,
-    recipe: row.recipes
-      ? { id: row.recipes.id, title: row.recipes.title, calories: row.recipes.calories }
-      : null,
-  }));
+  // Normalize to flat shape - cast recipes from unknown array to object
+  const result = (data || []).map((row: { date: string; meal_time: string; recipe_id: string | null; recipes: { id: string; title: string; calories: number } | unknown[] | null }) => {
+    const recipes = row.recipes as { id: string; title: string; calories: number } | null;
+    return {
+      date: row.date,
+      meal_time: row.meal_time,
+      recipe: recipes && !Array.isArray(recipes)
+        ? { id: recipes.id, title: recipes.title, calories: recipes.calories }
+        : null,
+    };
+  });
 
   return NextResponse.json(result);
 }
@@ -52,11 +55,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const recipes = data.recipes as unknown as { id: string; title: string; calories: number } | null;
   return NextResponse.json({
     date: data.date,
     meal_time: data.meal_time,
-    recipe: data.recipes
-      ? { id: data.recipes.id, title: data.recipes.title, calories: data.recipes.calories }
+    recipe: recipes && !Array.isArray(recipes)
+      ? { id: recipes.id, title: recipes.title, calories: recipes.calories }
       : null,
   });
 }

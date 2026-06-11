@@ -2,13 +2,32 @@
 
 import { useState, useEffect, useRef } from "react";
 
+// Web Speech API types
+type SpeechRecognitionType = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: { results: { [key: number]: { transcript: string } }[] }) => void;
+  onend: () => void;
+  onerror: () => void;
+  start: () => void;
+  stop: () => void;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognitionType;
+    webkitSpeechRecognition: new () => SpeechRecognitionType;
+  }
+}
+
 export default function InventarioPage() {
   const [content, setContent] = useState<string>("");
   const [updatedAt, setUpdatedAt] = useState<string>("");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [isListening, setIsListening] = useState(false);
   const [lastSaved, setLastSaved] = useState<string>("");
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionType | null>(null);
 
   // Load inventory on mount
   useEffect(() => {
@@ -36,9 +55,9 @@ export default function InventarioPage() {
     recognition.interimResults = false;
     recognition.lang = "es-ES";
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    recognition.onresult = (event: { results: { [key: number]: { transcript: string } }[] }) => {
       const transcript = Array.from(event.results)
-        .map((result) => result[0].transcript)
+        .map((result: { 0: { transcript: string } }) => result[0].transcript)
         .join(" ");
       setContent((prev) => prev + (prev ? " " : "") + transcript);
     };
