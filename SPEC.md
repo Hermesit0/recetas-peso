@@ -60,23 +60,25 @@ Minimalista funcional con acentos cálidos. Inspiración: apps de wellness japon
 ### Inventario (`/inventario`)
 - **Campo de texto principal**: textarea editable con texto natural
   - Formato libre, líneas de "ingrediente: cantidad"
-  - Ejemplo: " tofu 500g\n salsa soja 100ml\n jengibre fresco 30g"
+  - Ejemplo: " tengo 500g de arroz, 300g de tofu, salsa soja 80ml"
+- **Procesamiento LLM**: al pulsar "Procesar inventario", el texto libre se envía a OpenRouter (gpt-4o-mini) que lo parsea y convierte en lista estructurada `[{item, quantity, unit}]` en gramos/ml
+- **Vista parseada**: tabla que muestra los ingredientes extraídos con cantidad y unidad
 - **Fecha de actualización**: timestamp visible, se actualiza al guardar
-- **Botón guardar**: persiste en Supabase
+- **Botón procesar**: envía texto a LLM y guarda resultado estructurado en Supabase
 - **Botón micrófono**: activa Web Speech API (`SpeechRecognition`)
-  - Micro LED visual cuando está grabando
   - El texto reconocido se appendea al textarea
-  - feedback auditivo de confirmación
+  - chrome-only (Web Speech API)
 - **Sincronización**: datos disponibles en móvil y PC
 
 ### Calendario (`/calendario`)
-- Navegación entre días (flechas ← →)
-- Header: día actual destacado
-- Cada día muestra 2 slots: **09:00** y **12:00**
+- **3 Vistas**: día / semana / mes — tabs切换
+- **Vista día**: navegación entre días con flechas, 2 slots (09:00 / 12:00), kcal totales
+- **Vista semana**: grid de 7 días con slots expandidos por día
+- **Vista mes**: grid calendario tradicional, indicadores de kcal por día
+- **Botón "Generar recetas"**: según vista activa genera recetas con IA para el período (día → 2, semana → 14, mes → ~60). Las recetas se insertan en `recipes` y se asignan al `meal_plan` — las recetas históricas se сохраняются para el recetario
 - Slot con receta: card con título + kcal, click abre receta
-- Slot vacío: placeholder con icono "+"
-- Botón "Hoy" para volver al día actual
-- Al hacer click en un slot vacío: modal para asignar receta (buscador)
+- Slot vacío: botón "Asignar" con modal de selector de recetas
+- Botón "Ir a hoy" para volver al día actual
 
 ### Recetas (`/recetas`)
 - **Buscador**: input en la parte superior
@@ -169,6 +171,7 @@ CREATE TABLE recipes (
 CREATE TABLE inventory (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content TEXT NOT NULL DEFAULT '',
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [{item, quantity, unit}] parseado por LLM
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -191,12 +194,13 @@ CREATE TABLE weight_entries (
 ```
 
 ### API Routes
-- `GET/POST /api/inventory` — leer/guardar inventario
+- `GET/POST /api/inventory` — leer/guardar inventario (con parseo LLM en POST)
 - `GET /api/recipes` — lista todas las recetas
 - `GET /api/recipes/search?q=` — buscar por título
 - `GET /api/recipes/[id]` — detalle de receta
 - `GET/POST /api/meal-plan?date=` — obtener/asignar comida
 - `GET/POST /api/weight` — historial y nuevo registro
+- `POST /api/generate-meals` — genera recetas en bulk via LLM para un período (día/semana/mes)
 
 ### Data Flow
 1. Primera carga → API route consulta Supabase → renderiza datos
