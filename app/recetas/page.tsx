@@ -13,7 +13,7 @@ interface Recipe {
   calories: number;
   ingredients: Ingredient[];
   process: string[];
-  image_query: string;
+  image_url: string;
 }
 
 export default function RecetasPage() {
@@ -29,7 +29,7 @@ export default function RecetasPage() {
       fetch("/api/recipes")
         .then((r) => r.json())
         .then((data) => {
-          if (Array.isArray(data)) setRecipes(data);
+          if (Array.isArray(data)) setRecipes(data.map(normalizeRecipe));
         })
         .catch(() => {});
       return;
@@ -39,7 +39,7 @@ export default function RecetasPage() {
       fetch(`/api/recipes/search?q=${encodeURIComponent(query)}`)
         .then((r) => r.json())
         .then((data) => {
-          if (Array.isArray(data)) setRecipes(data);
+          if (Array.isArray(data)) setRecipes(data.map(normalizeRecipe));
         })
         .catch(() => {});
     }, 300);
@@ -52,9 +52,10 @@ export default function RecetasPage() {
     fetch("/api/recipes")
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setRecipes(data);
-          if (data.length > 0) setSelectedRecipe(data[0]);
+          if (Array.isArray(data)) {
+          const normalized = data.map(normalizeRecipe);
+          setRecipes(normalized);
+          if (normalized.length > 0) setSelectedRecipe(normalized[0]);
         }
       })
       .catch(() => {});
@@ -68,8 +69,24 @@ export default function RecetasPage() {
     }
   };
 
-  const getImageUrl = (imageQuery: string) => {
-    const q = encodeURIComponent(imageQuery || "asian food");
+  // Normalize recipe data — DB stores as strings, UI expects arrays
+  const normalizeRecipe = (r: Recipe | Record<string, unknown>): Recipe => {
+    const ing = r.ingredients;
+    const proc = r.process;
+    return {
+      ...r,
+      ingredients: typeof ing === "string"
+        ? ing.split(",").map((s: string) => ({ item: s.trim(), amount: "" }))
+        : Array.isArray(ing) ? ing : [],
+      process: typeof proc === "string"
+        ? proc.split(".").map((s: string) => s.trim()).filter(Boolean)
+        : Array.isArray(proc) ? proc : [],
+    } as Recipe;
+  };
+
+  const getImageUrl = (imageUrl: string) => {
+    if (imageUrl && imageUrl.startsWith("http")) return imageUrl;
+    const q = encodeURIComponent(imageUrl || "asian food");
     return `https://source.unsplash.com/800x450/?${q}`;
   };
 
@@ -152,7 +169,7 @@ export default function RecetasPage() {
               <div className="relative w-full rounded-card overflow-hidden mb-6 bg-gray-100" style={{ aspectRatio: "16/9" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getImageUrl(selectedRecipe.image_query)}
+                  src={getImageUrl(selectedRecipe.image_url)}
                   alt={selectedRecipe.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const { data, error } = await supabase
     .from("recipes")
-    .select("id, title, calories, ingredients, process, image_query")
+    .select("id, title, calories, ingredients, process, image_url")
     .order("title");
 
   if (error) {

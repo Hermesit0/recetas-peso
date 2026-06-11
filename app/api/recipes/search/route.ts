@@ -7,7 +7,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("recipes")
-    .select("id, title, calories, ingredients, process, image_query")
+    .select("id, title, calories, ingredients, process, image_url")
     .ilike("title", `%${q}%`)
     .order("title");
 
