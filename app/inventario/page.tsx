@@ -57,7 +57,7 @@ export default function InventarioPage() {
 
     recognition.onresult = (event: { results: { [key: number]: { transcript: string } }[] }) => {
       const transcript = Array.from(event.results)
-        .map((result: { 0: { transcript: string } }) => result[0].transcript)
+        .map((result) => (result as any)[0]?.transcript || "")
         .join(" ");
       setContent((prev) => prev + (prev ? " " : "") + transcript);
     };
