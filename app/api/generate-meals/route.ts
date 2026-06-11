@@ -79,7 +79,7 @@ Genera ahora las ${totalSlots} recetas, todas diferentes, variedad máxima:`;
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "openai/gpt-4o",
+      model: "deepseek/deepseek-v4-flash",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt },

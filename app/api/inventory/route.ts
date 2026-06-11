@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "openai/gpt-4o",
+      model: "deepseek/deepseek-v4-flash",
       messages: [
         { role: "system", content: LLM_PROMPT },
         { role: "user", content: `Parsea este texto de inventario:\n${content}` },
