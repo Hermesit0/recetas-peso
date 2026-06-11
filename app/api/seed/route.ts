@@ -19,7 +19,7 @@ async function generateRecipe(prompt: string): Promise<GeneratedRecipe> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
+      model: "deepseek/deepseek-v4-flash",
       messages: [
         {
           role: "system",
@@ -79,6 +79,14 @@ const recipePrompts = [
   "Shakshuka oriental con huevos, tomate, pimiento, comino y paprika, servido con pan integral. Máximo 280 kcal.",
 ];
 
+export async function GET() {
+  const { count } = await supabase.from("recipes").select("*", { count: "exact" });
+  return NextResponse.json({
+    message: `${count ?? 0} recetas en base de datos`,
+    seeded: count ?? 0,
+  });
+}
+
 export async function POST() {
   if (!OPENROUTER_API_KEY) {
     return NextResponse.json({ error: "OPENROUTER_API_KEY not set" }, { status: 500 });
@@ -87,7 +95,7 @@ export async function POST() {
   // Check if recipes already exist
   const { count } = await supabase.from("recipes").select("*", { count: "exact" });
   if (count && count > 0) {
-    return NextResponse.json({ message: `Already seeded: ${count} recipes exist` });
+    return NextResponse.json({ message: `Already seeded: ${count} recipes exist`, seeded: count });
   }
 
   const recipes: GeneratedRecipe[] = [];
@@ -100,11 +108,9 @@ export async function POST() {
     } catch (e) {
       errors.push(`Recipe ${i + 1}: ${e}`);
     }
-    // Small delay to avoid rate limiting
     await new Promise((r) => setTimeout(r, 500));
   }
 
-  // Insert into Supabase
   const toInsert = recipes.map((r) => ({
     title: r.title,
     calories: r.calories,
