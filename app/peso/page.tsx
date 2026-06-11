@@ -14,6 +14,7 @@ const GOAL_LOSS = 10; // 82 - 72
 export default function PesoPage() {
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [newWeight, setNewWeight] = useState<string>("");
+  const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; weight: number; date: string } | null>(null);
   const [status, setStatus] = useState<"idle" | "adding" | "added">("idle");
   const [error, setError] = useState<string>("");
 
@@ -73,12 +74,12 @@ export default function PesoPage() {
     const padX = 50;
     const padY = 20;
 
-    const xStep = (W - padX) / (sorted.length - 1);
+    const xStep = (W - padX) / Math.max(sorted.length - 1, 1);
 
     const points = sorted.map((e, i) => {
       const x = padX + i * xStep;
       const y = padY + (1 - (e.weight_kg - minW) / range) * (H - padY * 2);
-      return { x, y, weight: e.weight_kg };
+      return { x, y, weight: e.weight_kg, date: e.recorded_at };
     });
 
     const polylinePoints = points.map((p) => `${p.x},${p.y}`).join(" ");
@@ -87,57 +88,90 @@ export default function PesoPage() {
       padY + (1 - (TARGET_WEIGHT - minW) / range) * (H - padY * 2);
 
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: "240px" }}>
-        {/* Grid lines */}
-        {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-          const y = padY + t * (H - padY * 2);
-          const wVal = maxW - t * range;
-          return (
-            <g key={t}>
-              <line
-                x1={padX}
-                y1={y}
-                x2={W - 10}
-                y2={y}
-                stroke="#e5e7eb"
-                strokeWidth={1}
-              />
-              <text x={padX - 5} y={y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
-                {wVal.toFixed(1)}
-              </text>
+      <div className="relative">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: "240px" }}>
+          {/* Grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+            const y = padY + t * (H - padY * 2);
+            const wVal = maxW - t * range;
+            return (
+              <g key={t}>
+                <line
+                  x1={padX}
+                  y1={y}
+                  x2={W - 10}
+                  y2={y}
+                  stroke="#e5e7eb"
+                  strokeWidth={1}
+                />
+                <text x={padX - 5} y={y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
+                  {wVal.toFixed(1)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* X-axis date labels — show first, middle and last */}
+          {points.filter((_, i) => i === 0 || i === Math.floor(points.length / 2) || i === points.length - 1).map((p, _) => (
+            <text key={p.date} x={p.x} y={H - 2} textAnchor="middle" fontSize="9" fill="#6b7280">
+              {new Date(p.date + "T00:00:00").toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" })}
+            </text>
+          ))}
+
+          {/* Target line */}
+          <line
+            x1={padX}
+            y1={targetY}
+            x2={W - 10}
+            y2={targetY}
+            stroke="#f97316"
+            strokeWidth={1.5}
+            strokeDasharray="6 4"
+          />
+          <text x={W - 8} y={targetY + 4} fontSize="10" fill="#f97316" textAnchor="start">
+            meta {TARGET_WEIGHT}kg
+          </text>
+
+          {/* Line */}
+          <polyline
+            points={polylinePoints}
+            fill="none"
+            stroke="#e94560"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Points with hover */}
+          {points.map((p, i) => (
+            <g
+              key={p.date}
+              onMouseEnter={() => setHoveredPoint(p)}
+              onMouseLeave={() => setHoveredPoint(null)}
+              style={{ cursor: "pointer" }}
+            >
+              <circle key={i} cx={p.x} cy={p.y} r={hoveredPoint?.date === p.date ? 6 : 4} fill="#e94560" stroke="#fff" strokeWidth={2} />
             </g>
-          );
-        })}
+          ))}
+        </svg>
 
-        {/* Target line */}
-        <line
-          x1={padX}
-          y1={targetY}
-          x2={W - 10}
-          y2={targetY}
-          stroke="#f97316"
-          strokeWidth={1.5}
-          strokeDasharray="6 4"
-        />
-        <text x={W - 8} y={targetY + 4} fontSize="10" fill="#f97316" textAnchor="start">
-          meta {TARGET_WEIGHT}kg
-        </text>
-
-        {/* Line */}
-        <polyline
-          points={polylinePoints}
-          fill="none"
-          stroke="#e94560"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {/* Points */}
-        {points.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={4} fill="#e94560" />
-        ))}
-      </svg>
+        {/* Tooltip */}
+        {hoveredPoint && (
+          <div
+            className="absolute bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg pointer-events-none z-10"
+            style={{
+              left: hoveredPoint.x,
+              top: hoveredPoint.y - 40,
+              transform: "translateX(-50%)",
+            }}
+          >
+            <p className="font-mono font-bold text-base">{hoveredPoint.weight.toFixed(1)} kg</p>
+            <p className="text-gray-300">
+              {new Date(hoveredPoint.date + "T00:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
+            </p>
+          </div>
+        )}
+      </div>
     );
   };
 

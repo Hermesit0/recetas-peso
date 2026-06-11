@@ -72,10 +72,14 @@ export default function InventarioPage() {
     recognition.interimResults = false;
     recognition.lang = "es-ES";
 
-    recognition.onresult = (event: { results: { [key: number]: { transcript: string } }[] }) => {
-      const transcript = Array.from(event.results)
-        .map((result) => (result as unknown as { transcript: string })[0]?.transcript || "")
-        .join(" ");
+    recognition.onresult = (event: unknown) => {
+      const ev = event as { results: (string | string[])[] };
+      const allTranscripts: string[] = [];
+      for (let i = 0; i < ev.results.length; i++) {
+        const item = ev.results[i] as unknown as string[];
+        if (item[0]) allTranscripts.push(item[0]);
+      }
+      const transcript = allTranscripts.join(" ");
       setContent((prev) => prev + (prev ? " " : "") + transcript);
     };
 
