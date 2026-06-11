@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
+      model: "openai/gpt-4o",
       messages: [
         { role: "system", content: LLM_PROMPT },
         { role: "user", content: `Parsea este texto de inventario:\n${content}` },

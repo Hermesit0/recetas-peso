@@ -79,7 +79,7 @@ Genera ahora las ${totalSlots} recetas, todas diferentes, variedad máxima:`;
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "openai/gpt-4o-mini",
+      model: "openai/gpt-4o",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt },
