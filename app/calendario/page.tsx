@@ -353,9 +353,12 @@ export default function CalendarioPage() {
             <a href="/" className="hover:text-white transition-colors">Inicio</a>
             <span className="mx-2">/</span>
             <span className="text-white">Calendario</span>
+            <span className="mx-2">/</span>
+            <a href="/config" className="hover:text-white transition-colors">Config</a>
           </nav>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-4">
             <h1 className="text-xl font-bold">Plan de Comidas</h1>
+            <a href="/config" className="text-gray-300 hover:text-white transition-colors text-sm" title="Configuración">⚙️</a>
             {viewMode === "day" && (
               <div className="ml-auto text-right">
                 <p className="font-mono text-lg font-bold text-white">{totalKcal} kcal</p>

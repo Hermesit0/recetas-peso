@@ -99,8 +99,13 @@ export default function RecetasPage() {
             <a href="/" className="hover:text-white transition-colors">Inicio</a>
             <span className="mx-2">/</span>
             <span className="text-white">Recetas</span>
+            <span className="mx-2">/</span>
+            <a href="/config" className="hover:text-white transition-colors">Config</a>
           </nav>
+          <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Recetas Orientales</h1>
+          <a href="/config" className="text-gray-300 hover:text-white transition-colors text-sm" title="Configuración">⚙️</a>
+          </div>
         </div>
       </header>
 

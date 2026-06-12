@@ -1,8 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
-const SYSTEM_PROMPT = `Eres un chef nutricional especializado en cocina oriental Saludable, bajas en calorías (max 500 kcal por comida), máximo 15 ingredientes, proceso claro de 3-5 pasos, todo en sistema métrico. Generas en formato JSON exacto.`;
-
 interface GenerateMealRequest {
   startDate: string; // "YYYY-MM-DD"
   days: number; // 1 = day, 7 = week, 30 = month
@@ -20,57 +18,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "OPENROUTER_API_KEY no configurada" }, { status: 500 });
   }
 
-  // Count how many recipes we need to generate
-  const slotsPerDay = 2; // 09:00 and 12:00
-  const totalSlots = days * slotsPerDay;
+  // Load config from DB
+  const { data: configData, error: configErr } = await supabase
+    .from("app_config")
+    .select("key, value");
 
-  // Check existing recipes count to see what we already have
+  if (configErr) {
+    return NextResponse.json({ error: "No se pudo leer la config: " + configErr.message }, { status: 500 });
+  }
+
+  const config: Record<string, string> = {};
+  for (const row of configData || []) {
+    config[row.key] = row.value;
+  }
+
+  const SYSTEM_PROMPT = config.recipe_system_prompt || "Eres un chef nutricional especializado en cocina oriental Saludable, bajas en calorías (max 500 kcal por comida), máximo 15 ingredientes, proceso claro de 3-5 pasos, todo en sistema métrico. Generas en formato JSON exacto.";
+  const USER_PROMPT_TEMPLATE = config.recipe_user_prompt || "Genera {totalSlots} recetas orientales...";
+  const LLM_MODEL = config.llm_model || "deepseek/deepseek-v4-pro";
+
+  // Count how many recipes we already have
   const { count: existingCount } = await supabase
     .from("recipes")
     .select("*", { count: "exact", head: true });
 
-  // Build prompt for bulk recipe generation
-  const prompt = `Genera ${totalSlots} recetas orientales saludables para un plan de comidas.
+  const slotsPerDay = 2; // 09:00 and 12:00
+  const totalSlots = days * slotsPerDay;
 
-DATOS DEL USUARIO:
-- Hombre, 38 años, 1.66m, 82kg → meta 72kg
-- Objetivo: déficit calórico con cocina oriental
-- Ingredientes disponibles: los que tengas en tu inventario (asume que tienes los básicos)
-- Solo sistema métrico (g, ml, kg)
-
-FORMATO: Devuelve SOLO un array JSON con ${totalSlots} recetas, cada una con esta estructura exacta:
-{
-  "title": "nombre en español, descriptor oriental",
-  "image_url": "URL de imagen de Unsplash del plato (solo el URL completo, ejemplo: https://images.unsplash.com/photo-xxxxxxxx?w=400)",
-  "calories": número entero de kcal,
-  "ingredients": "ingrediente1 cantidadg, ingrediente2 cantidadg, ...",
-  "process": "Paso 1.... Paso 2. ... Paso 3. ...",
-  "meal_type": "desayuno" o "almuerzo"
-}
-
-REGLAS:
-- Máximo 500 kcal por receta
-- Máximo 15 ingredientes
-- Calories debe ser coherente con los ingredientes (usa el poder calorífico real aproximado)
-- image_url: usa fotos reales de Unsplash que existan (ejemplo: https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400)
-- ingredients: lista detallada con cantidades en GRAMOS (g) o ML (ml), separadas por comas
-- process: 3 a 5 pasos numerados, cada paso corto
-- meal_type: "desayuno" para slots de 09:00, "almuerzo" para slots de 12:00
-- Variedad: NO repitas recetas, cada una debe ser diferente
-- Cuisine: japonesa, china, coreana, tailandesa, vietnamita, india oriental
-- Baila la generación entre los primeros ${existingCount ?? 0} IDs ya existentes para no repetir títulos
-
-EJEMPLO de una receta:
-{
-  "title": "Tofu salteado con brócoli y sésamo",
-  "image_url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
-  "calories": 320,
-  "ingredients": "tofu firme 200g, brócoli 150g, ajo 10g, jengibre fresco 10g, salsa soja 15ml, aceite sésamo 5ml, semillas sésamo 5g, maicena 10g",
-  "process": "1. Cortar el tofu en cubos y marinar con salsa soja y jengibre. 2. Saltear el brócoli en aceite sésamo 3 minutos. 3. Añadir el tofu y cocinar 5 minutos. 4. Disolver maicena en agua yespesar la salsa. 5. Terminar con semillas de sésamo.",
-  "meal_type": "almuerzo"
-}
-
-Genera ahora las ${totalSlots} recetas, todas diferentes, variedad máxima:`;
+  // Fill in placeholders
+  const userPrompt = USER_PROMPT_TEMPLATE
+    .replace("{totalSlots}", String(totalSlots))
+    .replace("{existingCount}", String(existingCount ?? 0))
+    .replace("{startDate}", startDate)
+    .replace("{days}", String(days));
 
   const llmRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -79,10 +58,10 @@ Genera ahora las ${totalSlots} recetas, todas diferentes, variedad máxima:`;
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "deepseek/deepseek-v4-flash",
+      model: LLM_MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: prompt },
+        { role: "user", content: userPrompt },
       ],
       max_tokens: 4096,
       temperature: 0.7,
@@ -204,5 +183,6 @@ Genera ahora las ${totalSlots} recetas, todas diferentes, variedad máxima:`;
     generated: insertedRecipes.length,
     total_slots: totalSlots,
     recipes: insertedRecipes,
+    model: LLM_MODEL,
   });
 }

@@ -53,10 +53,15 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-primary text-white py-6 px-6 shadow-md">
         <div className="max-w-4xl mx-auto">
+          <div className="flex items-start justify-between">
+          <div>
           <h1 className="text-2xl font-bold">Recetas — Control de Peso</h1>
           <p className="text-gray-300 text-sm mt-1">
             Orientación culinaria · 38 años · 82 kg → 72 kg
           </p>
+          </div>
+          <a href="/config" className="text-gray-300 hover:text-white transition-colors text-sm" title="Configuración">⚙️ Config</a>
+          </div>
         </div>
       </header>
 
